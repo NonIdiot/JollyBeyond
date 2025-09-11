@@ -1,0 +1,13 @@
+{
+	"id": "nassoc.jollybeyond",
+	"name": "Jolly Co-Op: Beyond",
+	"version": "1.0.0",
+	"hide_version": false,
+	"authors": "NonIdiot",
+	"description": "Adds new keybinds allowing for further expression!",
+	"requirements": ["improved-input-config"],
+	"requirements_names": ["[1.10] Improved Input Config: Extended"],
+	"priorities": ["slime-cubed.devconsole"],
+	"checksum_override_version": false,
+	"tags": []
+}
