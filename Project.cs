@@ -49,8 +49,15 @@ namespace JollyBeyond
         public class Data
         {
             // variables
-            public int facingFocus = 0;
+            public float facingFocus = 0;
             public int startBuffer = 0;
+            public int firstPressed = 0;
+            public int canTailFlop = 0;
+            public float lastFacingFocus = 0;
+            
+            // meadow compat
+            public int myAssignedNum = -1;
+            public int beenHoldingFlopFor = 0;
         }
     }
 
@@ -102,8 +109,8 @@ namespace JollyBeyond
             
             try
             {
-                LeftRotation = PlayerKeybind.Register("jollybeyond:leftrotation", "Jolly Co-op: Beyond", "Left Rotation", KeyCode.B, KeyCode.JoystickButton3);
-                RightRotation = PlayerKeybind.Register("jollybeyond:rightrotation", "Jolly Co-op: Beyond", "Right Rotation", KeyCode.N, KeyCode.JoystickButton4);
+                LeftRotation = PlayerKeybind.Register("jollybeyond:leftrotation", "Jolly Co-op: Beyond", "Left Rotation", KeyCode.G, KeyCode.JoystickButton3);
+                RightRotation = PlayerKeybind.Register("jollybeyond:rightrotation", "Jolly Co-op: Beyond", "Right Rotation", KeyCode.H, KeyCode.JoystickButton4);
                 DebugKeybind = PlayerKeybind.Register("jollybeyond:debugkeybind", "Jolly Co-op: Beyond", "Debug Keybind", KeyCode.Y, KeyCode.JoystickButton5);
             }
             catch (Exception e)
@@ -167,51 +174,83 @@ namespace JollyBeyond
         private string DizzyFaceStuff(On.PlayerGraphics.orig_DefaultFaceSprite_float_int orig, PlayerGraphics self, float eyeScale, int imgIndex)
         {
             string origOrig = orig(self, eyeScale, imgIndex);
-            if (self.player.GetCustomData().startBuffer > 4 && self.player.GetCustomData().startBuffer < 9)
+            if (true)//self.player.GetCustomData().startBuffer > 4 && self.player.GetCustomData().startBuffer < 9
             {
-                if (self.player.Input()[RightRotation])
+                if (self.player.GetCustomData().facingFocus < 0f)//self.player.Input()[LeftRotation] && self.player.GetCustomData().firstPressed != 1
                 {
-                    //origOrig = orig(self, eyeScale, headMapping[(eyeScale >= 0f ? 0 : 1)][imgIndex]);//self.player.flipDirection < 0
-                    //origOrig = orig(self, eyeScale, (imgIndex + (self.player.flipDirection >= 0 || self.player.Input()[RightRotation] ? 2 : 7)) % 9);
-                    //origOrig = orig(self, eyeScale, headMapping[(eyeScale >= 0f ? 0 : 1)][(imgIndex+debugThingy)%9]);
-                    //eyescale -1 and imgindex <7: eyescale becomes -1, imgindex+=2
-                    //eyescale -1 and imgindex >6: eyescale becomes 1, imgindex=15-(imgindex)
-                    //eyescale 1 and imgindex >1: eyescale becomes 1, imgindex-=2
-                    //eyescale 1 and imgindex <2: eyescale becomes -1, imgindex=1-(imgindex)
-                    /*if (eyeScale < 0)
-                    {
-                        origOrig = orig(self, (imgIndex<7 ? 1 : -1)*eyeScale, (imgIndex < 7 ? imgIndex+2 : 15-imgIndex));
-                    }
-                    else
-                    {
-                        origOrig = orig(self, (imgIndex>1 ? 1 : -1)*eyeScale, (imgIndex > 1 ? imgIndex-2 : 1-imgIndex));
-                    }*/
-                    //eyescale -1 and imgindex >1: eyescale becomes -1, imgindex-=2
-                    //eyescale -1 and imgindex <2: eyescale becomes 1, imgindex=1-(imgindex)
-                    //eyescale 1 and imgindex >4: eyescale becomes 1, imgindex-=2
-                    //eyescale 1 and imgindex <5: eyescale becomes 1, imgindex=2
-                    if (eyeScale < 0)
-                    {
-                        //origOrig = orig(self, (imgIndex>1 ? 1f : -1f)*eyeScale, (imgIndex >1 ? imgIndex-2 : 2-imgIndex));
-                    }
-                    else
-                    {
-                        //origOrig = orig(self, eyeScale, (imgIndex > 4 ? imgIndex-2 : 2));
-                    }
-                    origOrig = orig(self, 1, (eyeScale < 0 ? (imgIndex > 4 ? 0 : 1) : 2));
-                    Logger.LogInfo("aaa " + origOrig + " b "+eyeScale);
+                    origOrig = orig(self, -1, (eyeScale > 0 ? (imgIndex > 4 ? 0 : 1) : 2));
+                    //Logger.LogInfo("bbb " + origOrig + " b "+eyeScale);
                 }
-                if (self.player.Input()[RightRotation])
+                if (self.player.GetCustomData().facingFocus > 0f)//self.player.Input()[RightRotation] && self.player.GetCustomData().firstPressed != -1
                 {
-                    //origOrig = orig(self, eyeScale, headMapping[(self.player.flipDirection < 0 ? 0 : 1)][imgIndex]);
+                    origOrig = orig(self, 1, (eyeScale < 0 ? (imgIndex > 4 ? 0 : 1) : 2));
+                    //Logger.LogInfo("aaa " + origOrig + " b "+eyeScale);
                 }
             }
             return origOrig;
         }
 
+        private float NumToPow(float num, float target)
+        {
+            return (float)Math.Pow(2, Math.Abs(num - target) / 20f);
+        }
+
+        private int cycleMadness = 0;
         private void DizzyFaceStuff2(On.PlayerGraphics.orig_DrawSprites orig, PlayerGraphics self, RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, float timeStacker, Vector2 camPos)
         {
+            // meadow compat
+            if (ModManager.ActiveMods.Any(x => x.id == "henpemaz_rainmeadow") && OnlineManager.lobby != null && !self.player.isNPC)// 
+            {
+                cycleMadness = (cycleMadness > 5 ? 0 : cycleMadness + 1);
+                if (cycleMadness == 0 || true)
+                {
+                    /*OnlinePhysicalObject onlinePhysicalObject;
+                    OnlinePhysicalObject.map.TryGetValue(self.player.abstractPhysicalObject, out onlinePhysicalObject);
+                    foreach (OnlinePlayer onlinePlayer in OnlineManager.players)
+                    {
+                        if (!onlinePlayer.isMe)
+                        {
+                            onlinePlayer.InvokeOnceRPC(new OnlineEmote.OnlEmote(OnlineEmote.Emote), new object[]
+                            {
+                                onlinePhysicalObject,
+                                (self.player.GetCustomData().startBuffer == 9 ? 0 : (self.player.Input()[LeftRotation] ? (self.player.Input()[RightRotation] ? 3 : 1) : (self.player.Input()[RightRotation] ? 2 : 0))),
+                                false,
+                            });
+                        }
+                    }*/
+                    foreach (KeyValuePair<OnlinePlayer, OnlineEntity.EntityId> keyValuePair in OnlineManager.lobby.playerAvatars)
+                    {
+                        if (keyValuePair.Key == OnlineManager.mePlayer && ((keyValuePair.Value.FindEntity(false) as OnlinePhysicalObject).apo.realizedObject as Player).playerState.playerNumber == self.player.playerState.playerNumber)
+                        {
+                            foreach (OnlinePlayer onlinePlayer2 in OnlineManager.players)
+                            {
+                                if (!onlinePlayer2.isMe)
+                                {
+                                    onlinePlayer2.InvokeOnceRPC(new OnlineEmote.OnlEmote(OnlineEmote.Emote), new object[]
+                                    {
+                                        keyValuePair.Value.FindEntity(false) as OnlinePhysicalObject,
+                                        (self.player.Input()[LeftRotation] ? (self.player.Input()[RightRotation] ? (self.player.GetCustomData().startBuffer != 9 || self.player.GetCustomData().beenHoldingFlopFor > 5 ? 0 : 3) : 1) : (self.player.Input()[RightRotation] ? 2 : 0)),
+                                        false,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+                Logger.Log(LogLevel.Info,"glue eat "+(self.player.GetCustomData().myAssignedNum));
+                if (self.player.GetCustomData().myAssignedNum != -1)
+                {
+                    self.player.Input()[LeftRotation] = (self.player.GetCustomData().myAssignedNum % 2 == 1);
+                    self.player.Input()[RightRotation] = (self.player.GetCustomData().myAssignedNum > 1);
+                }
+            }
             orig(self, sLeaser, rCam, timeStacker, camPos);
+            //Logger.Log(LogLevel.Info,"flue eat "+self.player.isNPC+" "+(self.player.GetCustomData().myAssignedNum));
+            if (self.player.GetCustomData().facingFocus != 0)
+            {
+                self.player.GetCustomData().lastFacingFocus = self.player.GetCustomData().facingFocus + 0;
+            }
+
             Vector2 vector = Vector2.Lerp(self.drawPositions[0, 1], self.drawPositions[0, 0], 0.5f);
             Vector2 vector2 = Vector2.Lerp(self.drawPositions[1, 1], self.drawPositions[1, 0], 0.5f);
             Vector2 vector3 = Vector2.Lerp(self.head.lastPos, self.head.pos, 0.5f);
@@ -223,46 +262,144 @@ namespace JollyBeyond
                 num4 = Custom.IntClamp((int)Mathf.Lerp((float)num4, 4f, self.player.sleepCurlUp), 0, 8);
             }
             bool eitherButtonPressed = false;
-            if (self.player.Input()[LeftRotation])
+            bool stopThatTrain = false;
+            int wasOld = 0;
+            if (self.player.Input()[LeftRotation] && self.player.GetCustomData().firstPressed != 1)
             {
                 eitherButtonPressed = true;
                 if (self.player.GetCustomData().startBuffer > 4 && self.player.GetCustomData().startBuffer < 9)
                 {
+                    stopThatTrain = true;
+                    if (!self.player.Input()[RightRotation])
+                    {
+                        self.player.GetCustomData().facingFocus = Math.Max(self.player.GetCustomData().facingFocus-NumToPow(self.player.GetCustomData().facingFocus,-20), -20);
+                        self.player.GetCustomData().firstPressed = -1;
+                    }
+                    else
+                    {
+                        self.player.GetCustomData().facingFocus = Math.Max(self.player.GetCustomData().facingFocus-NumToPow(self.player.GetCustomData().facingFocus,-30), -30);
+                    }
                     if (sLeaser.sprites[9].scaleX > 0)
                     {
-                        sLeaser.sprites[9].scaleX *= -1;
+                        wasOld = -1;
+                        //sLeaser.sprites[9].scaleX *= -1;
                     }
-
-                    sLeaser.sprites[3].rotation -= 45;
-                    sLeaser.sprites[3].x -= 2;
+                    //sLeaser.sprites[9].x += 1;
                 }
                 else if (self.player.Input()[RightRotation])
                 {
                     self.player.GetCustomData().startBuffer = 9;
-                    self.player.mainBodyChunk.vel.y = -0.1f;
+                    self.player.GetCustomData().beenHoldingFlopFor++;
+                    if (self.player.GetCustomData().canTailFlop == 0)
+                    {
+                        self.player.GetCustomData().canTailFlop = 20;
+                        for (int i=0;i<self.tail.Length;i++)
+                        {
+                            if (self.player.canJump == 0 || self.player.bodyMode == Player.BodyModeIndex.ClimbingOnBeam)
+                            {
+                                self.tail[i].vel.x = (self.player.mainBodyChunk.pos.x > self.tail[self.tail.Length-1].pos.x ? 6f : -6f);
+                            }
+                            else
+                            {
+                                self.tail[i].vel.y = 3f;//(self.player.canJump > 0 ? 3f : -3f);
+                            }
+                        }
+                    }
+                    //self.player.bodyChunks[0].vel.y = 0.1f;
+                    //self.player.bodyChunks[1].vel.y = 0.1f;
                 }
             }
-            if (self.player.Input()[RightRotation])
+            if (self.player.Input()[RightRotation] && self.player.GetCustomData().firstPressed != -1)
             {
                 eitherButtonPressed = true;
                 if (self.player.GetCustomData().startBuffer > 4 && self.player.GetCustomData().startBuffer < 9)
                 {
+                    stopThatTrain = true;
+                    if (!self.player.Input()[LeftRotation])
+                    {
+                        self.player.GetCustomData().facingFocus = Math.Min(self.player.GetCustomData().facingFocus+NumToPow(self.player.GetCustomData().facingFocus,20), 20);
+                        self.player.GetCustomData().firstPressed = 1;
+                    }
+                    else
+                    {
+                        self.player.GetCustomData().facingFocus = Math.Min(self.player.GetCustomData().facingFocus+NumToPow(self.player.GetCustomData().facingFocus,20), 30);
+                    }
                     if (sLeaser.sprites[9].scaleX < 0) // && Custom.IntClamp((int)Mathf.Lerp((float)num4, 1f, self.player.sleepCurlUp), 0, 8) < 2
                     {
-                        sLeaser.sprites[9].scaleX *= -1;
+                        wasOld = 1;
+                        //sLeaser.sprites[9].scaleX *= -1;
                     }
-
-                    sLeaser.sprites[3].rotation += 45;
-                    sLeaser.sprites[3].x += 2;
+                    //sLeaser.sprites[9].x -= 1;
                 }
             }
             if (!eitherButtonPressed)
             {
+                self.player.GetCustomData().firstPressed = 0;
                 self.player.GetCustomData().startBuffer = 0;
+                self.player.GetCustomData().facingFocus = (self.player.GetCustomData().facingFocus > 0 ? Math.Max(self.player.GetCustomData().facingFocus - 1,0) : (self.player.GetCustomData().facingFocus < 0 ? Math.Min(self.player.GetCustomData().facingFocus + 1,0) : 0));
+                self.player.GetCustomData().canTailFlop = Math.Max(0,self.player.GetCustomData().canTailFlop-1);
+                self.player.GetCustomData().beenHoldingFlopFor = 0;
             }
             else if (self.player.GetCustomData().startBuffer < 5)
             {
                 self.player.GetCustomData().startBuffer++;
+            }
+            else if (self.player.GetCustomData().startBuffer == 9 && false)
+            {
+                //Logger.Log(LogLevel.Info,"fuck dude "+(self.hands[0].absoluteHuntPos.x-self.player.mainBodyChunk.pos.x));
+                //int whichHande = (self.hands[0].reachingForObject ? 1 : 0);
+                //Vector2 vector22 = self.player.PointDir();
+                //Vector2 vector22 = (self.hands[self.player.handPointing].absoluteHuntPos - self.player.mainBodyChunk.pos).normalized + self.player.mainBodyChunk.pos;
+                //if (self.player.handPointing != -1) self.player.handPointing = 1;
+                if (self.player.handPointing == 1)
+                {
+                    self.hands[1-self.player.handPointing].reachingForObject = true;
+                    self.hands[1-self.player.handPointing].reachedSnapPosition = false;
+                    //self.hands[1-self.player.handPointing].mode = Limb.Mode.HuntAbsolutePosition;
+                    self.hands[1-self.player.handPointing].absoluteHuntPos = self.hands[self.player.handPointing].absoluteHuntPos+new Vector2(0,0);
+                    self.hands[1-self.player.handPointing].absoluteHuntPos.x = self.player.mainBodyChunk.pos.x-(self.hands[1-self.player.handPointing].absoluteHuntPos.x-self.player.mainBodyChunk.pos.x)*0.9f;
+                    //self.hands[1-self.player.handPointing].absoluteHuntPos = new Vector2(self.player.mainBodyChunk.pos.x - vector22.x * 100f, self.player.mainBodyChunk.pos.y + vector22.y * 100f);
+                    //self.player.handPointing = 0;
+                    //self.hands[1-self.player.handPointing].absoluteHuntPos =
+                }
+                else if (self.player.handPointing == 0)
+                {
+                    Vector2 vector22 = (self.hands[self.player.handPointing].absoluteHuntPos - self.player.mainBodyChunk.pos).normalized;
+
+                    self.hands[1].reachingForObject = true;
+                    //self.hands[1].reachedSnapPosition = false;
+                    //self.hands[1].mode = Limb.Mode.HuntAbsolutePosition;
+                    //Vector2 oldVector = self.hands[0].absoluteHuntPos+new Vector2(0,0);
+                    //Vector2 newVector = self.hands[0].absoluteHuntPos+new Vector2(0,0);
+                    //newVector.x = self.player.mainBodyChunk.pos.x-(newVector.x-self.player.mainBodyChunk.pos.x)*0.9f;
+                    Vector2 newVector = new Vector2(self.player.mainBodyChunk.pos.x - vector22.x * 100f, self.player.mainBodyChunk.pos.y + vector22.y * 100f);
+                    //self.hands[0].absoluteHuntPos = newVector;
+                    //self.hands[0].absoluteHuntPos*=0.5f;
+                    self.hands[1].absoluteHuntPos = newVector;
+                }
+            }
+            if (stopThatTrain)
+            {
+                sLeaser.sprites[9].x = vector3.x - camPos.x;
+                sLeaser.sprites[9].y = vector3.y - 2f - camPos.y;
+            }
+            sLeaser.sprites[3].rotation += 45*((self.player.GetCustomData().facingFocus)/20f);//*(self.player.GetCustomData().facingFocus<0 ? 0.5f : 1f)
+            sLeaser.sprites[3].x += (Math.Abs(wasOld) < 2f ? 2 : 3)*(self.player.GetCustomData().facingFocus/20f);
+            //if (wasOld != 0 && Math.Abs(wasOld) < 2f)
+            //sLeaser.sprites[9].x -= wasOld;
+            //sLeaser.sprites[9].scaleX *= -1;
+            if (self.player.GetCustomData().facingFocus != 0)
+            {
+                if (self.player.GetCustomData().lastFacingFocus < 0 && sLeaser.sprites[9].scaleX > 0)
+                {
+                    sLeaser.sprites[9].x += 1;
+                    sLeaser.sprites[9].scaleX = -Math.Abs(sLeaser.sprites[9].scaleX);
+                }
+                else if (self.player.GetCustomData().lastFacingFocus > 0 && sLeaser.sprites[9].scaleX < 0)
+                {
+                    sLeaser.sprites[9].x -= 1;
+                    sLeaser.sprites[9].scaleX = Math.Abs(sLeaser.sprites[9].scaleX);
+                }
             }
         }
 
@@ -302,5 +439,26 @@ namespace JollyBeyond
             ]);
             Plugin.Log(LogLevel.Info, "[JollyBeyond] RuinedMath's config successfully initialized!");
         }
+    }
+    
+    public static class OnlineEmote
+    {
+        // Token: 0x06000004 RID: 4 RVA: 0x00002344 File Offset: 0x00000544
+        [SoftRPCMethod]
+        public static void Emote(OnlinePhysicalObject player, int whichButton, bool isLocal)
+        {
+            try
+            {
+                (player.apo.realizedObject as Player).GetCustomData().myAssignedNum = (isLocal ? -1 : whichButton);
+            }
+            catch (Exception)
+            {
+                
+            }
+        }
+
+        // Token: 0x02000004 RID: 4
+        // (Invoke) Token: 0x06000007 RID: 7
+        public delegate void OnlEmote(OnlinePhysicalObject player, int whichButton, bool isLocal);
     }
 }
