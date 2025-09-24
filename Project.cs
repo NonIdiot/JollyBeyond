@@ -62,6 +62,7 @@ namespace JollyBeyond
             // pup values
             public int pupHowLong = 0;
             public bool pupLeft = false;
+            public bool pupDoesBoth = false;
         }
     }
 
@@ -258,10 +259,15 @@ namespace JollyBeyond
                 {
                     self.player.GetCustomData().pupHowLong = (int)Math.Round(UnityEngine.Random.value * 20f + 10f);
                     self.player.GetCustomData().pupLeft = (UnityEngine.Random.value < 0.5f);
+                    self.player.GetCustomData().pupDoesBoth = (UnityEngine.Random.value < 0.1f+(self.player.abstractCreature.personality.bravery/10f));
                 }
                 if (self.player.GetCustomData().pupHowLong > 0)
                 {
                     self.player.Input()[(self.player.GetCustomData().pupLeft ? LeftRotation : RightRotation)] = true;
+                    if (self.player.GetCustomData().pupDoesBoth)
+                    {
+                        self.player.Input()[(self.player.GetCustomData().pupLeft ? RightRotation : LeftRotation)] = true;
+                    }
                     self.player.GetCustomData().pupHowLong--;
                 }
             }
