@@ -58,6 +58,10 @@ namespace JollyBeyond
             // meadow compat
             public int myAssignedNum = -1;
             public int beenHoldingFlopFor = 0;
+            
+            // pup values
+            public int pupHowLong = 0;
+            public bool pupLeft = false;
         }
     }
 
@@ -174,16 +178,20 @@ namespace JollyBeyond
         private string DizzyFaceStuff(On.PlayerGraphics.orig_DefaultFaceSprite_float_int orig, PlayerGraphics self, float eyeScale, int imgIndex)
         {
             string origOrig = orig(self, eyeScale, imgIndex);
-            if (true)//self.player.GetCustomData().startBuffer > 4 && self.player.GetCustomData().startBuffer < 9
+            if (Math.Abs(self.player.GetCustomData().facingFocus)>1.5f)//self.player.GetCustomData().startBuffer > 4 && self.player.GetCustomData().startBuffer < 9
             {
-                if (self.player.GetCustomData().facingFocus < 0f)//self.player.Input()[LeftRotation] && self.player.GetCustomData().firstPressed != 1
+                if (self.player.GetCustomData().lastFacingFocus < 0f)//self.player.Input()[LeftRotation] && self.player.GetCustomData().firstPressed != 1
                 {
-                    origOrig = orig(self, -1, (eyeScale > 0 ? (imgIndex > 4 ? 0 : 1) : 2));
+                    bool june = self.player.GetCustomData().lastFacingFocus > -15f;
+                    int wlue = AvgIntsIf(2, imgIndex, june);
+                    origOrig = orig(self, -1, (eyeScale > 0 ? (imgIndex > 4 ? 0 : 1) : wlue));
                     //Logger.LogInfo("bbb " + origOrig + " b "+eyeScale);
                 }
-                if (self.player.GetCustomData().facingFocus > 0f)//self.player.Input()[RightRotation] && self.player.GetCustomData().firstPressed != -1
+                if (self.player.GetCustomData().lastFacingFocus > 0f)//self.player.Input()[RightRotation] && self.player.GetCustomData().firstPressed != -1
                 {
-                    origOrig = orig(self, 1, (eyeScale < 0 ? (imgIndex > 4 ? 0 : 1) : 2));
+                    bool june = self.player.GetCustomData().lastFacingFocus < 15f;
+                    int wlue = AvgIntsIf(2, imgIndex, june);
+                    origOrig = orig(self, 1, (eyeScale < 0 ? (imgIndex > 4 ? 0 : 1) : wlue));
                     //Logger.LogInfo("aaa " + origOrig + " b "+eyeScale);
                 }
             }
@@ -199,7 +207,7 @@ namespace JollyBeyond
         private void DizzyFaceStuff2(On.PlayerGraphics.orig_DrawSprites orig, PlayerGraphics self, RoomCamera.SpriteLeaser sLeaser, RoomCamera rCam, float timeStacker, Vector2 camPos)
         {
             // meadow compat
-            if (ModManager.ActiveMods.Any(x => x.id == "henpemaz_rainmeadow") && OnlineManager.lobby != null && !self.player.isNPC)// 
+            if ((ModManager.ActiveMods.Any(x => x.id == "henpemaz_rainmeadow") && OnlineManager.lobby != null && !self.player.isNPC))// 
             {
                 cycleMadness = (cycleMadness > 5 ? 0 : cycleMadness + 1);
                 if (cycleMadness == 0 || true)
@@ -242,6 +250,19 @@ namespace JollyBeyond
                 {
                     self.player.Input()[LeftRotation] = (self.player.GetCustomData().myAssignedNum % 2 == 1);
                     self.player.Input()[RightRotation] = (self.player.GetCustomData().myAssignedNum > 1);
+                }
+            }
+            if (self.player.isNPC && (!ModManager.ActiveMods.Any(x => x.id == "henpemaz_rainmeadow") || OnlineManager.lobby == null))
+            {
+                if (self.player.abstractCreature.personality.energy / 50f + UnityEngine.Random.value > 0.99f)
+                {
+                    self.player.GetCustomData().pupHowLong = (int)Math.Round(UnityEngine.Random.value * 20f + 10f);
+                    self.player.GetCustomData().pupLeft = (UnityEngine.Random.value < 0.5f);
+                }
+                if (self.player.GetCustomData().pupHowLong > 0)
+                {
+                    self.player.Input()[(self.player.GetCustomData().pupLeft ? LeftRotation : RightRotation)] = true;
+                    self.player.GetCustomData().pupHowLong--;
                 }
             }
             orig(self, sLeaser, rCam, timeStacker, camPos);
@@ -397,7 +418,7 @@ namespace JollyBeyond
                 }
                 else if (self.player.GetCustomData().lastFacingFocus > 0 && sLeaser.sprites[9].scaleX < 0)
                 {
-                    sLeaser.sprites[9].x -= 1;
+                    //sLeaser.sprites[9].x -= 1;
                     sLeaser.sprites[9].scaleX = Math.Abs(sLeaser.sprites[9].scaleX);
                 }
             }
@@ -407,6 +428,11 @@ namespace JollyBeyond
         private void Log(object text)
         {
             Logger.LogDebug("[JollyBeyond] " + text);
+        }
+
+        private int AvgIntsIf(int a, int b, bool c)
+        {
+            return (c ? (a + b)/2 : a);
         }
     }
 
